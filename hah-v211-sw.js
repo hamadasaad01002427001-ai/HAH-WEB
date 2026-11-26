@@ -1,0 +1,7 @@
+const CACHE='hah-v211-shell';
+const SHELL=new URL('./HAH_V211_offline.html',self.location.href).href;
+const SDK='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js';
+async function timedFetch(req,ms=3500){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),ms);try{return await fetch(req,{signal:controller.signal});}finally{clearTimeout(timer);}}
+self.addEventListener('install',e=>e.waitUntil((async()=>{const c=await caches.open(CACHE);await c.add(SHELL);try{await c.add(SDK)}catch(e){}await self.skipWaiting();})()));
+self.addEventListener('activate',e=>e.waitUntil((async()=>{for(const k of await caches.keys()){if(/^hah-v(?:209|210)-shell$/.test(k))await caches.delete(k);}await self.clients.claim();})()));
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);const shell=u.origin===self.location.origin&&u.pathname===new URL(SHELL).pathname;if(!shell&&u.href!==SDK)return;const auth=shell&&['code','error','error_description','access_token','refresh_token'].some(k=>u.searchParams.has(k));if(auth)return;e.respondWith((async()=>{const c=await caches.open(CACHE);try{const r=await timedFetch(e.request);if(r.ok&&!u.search)await c.put(e.request,r.clone());if(r.ok)return r;const saved=await c.match(shell?SHELL:SDK);return saved||r;}catch(err){const r=await c.match(shell?SHELL:SDK);if(r)return r;throw err;}})());});
